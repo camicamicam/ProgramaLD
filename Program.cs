@@ -40,7 +40,7 @@ namespace ProgramaLD
                         string.IsNullOrWhiteSpace(maximoTexto) ||
                         string.IsNullOrWhiteSpace(valorTexto))
                     {
-                        listaValores.Add(int.Parse(valorTexto));
+                        listaValores.Add(float.Parse(valorTexto));
                         continue;
                     }
 
@@ -99,7 +99,73 @@ namespace ProgramaLD
         }
         static void Evaluar(List<Rangos> listaRangos, List<float> listaValores)
         {
+            string Pathresultado = "Resultado.xlsx";
+            using (ExcelPackage rpackage = new ExcelPackage())
+            {
+                ExcelWorksheet hojar = rpackage.Workbook.Worksheets.Add("Resultados");
+                string[] encabezados = {"Valores", "Grado de verdad", "Rango"};
+                object[,] listaSalida = {};
+
+                for (int e = 0; e < encabezados.Length; e++)
+                {
+                    hojar.Cells[1,e+1].Value = encabezados[e];
+                }
+
+                Calculo(listaSalida, listaValores, listaRangos);
+
+                for (int f = 0; f < listaValores.Count; f++)
+                {
+                    for (int c = 0; c < encabezados.Length; c++)
+                    {
+                        hojar.Cells[f + 2, c +1].Value = listaSalida[f,c];
+                    }
+                }
+                hojar.Cells.AutoFitColumns();
+                File.WriteAllBytes(Pathresultado, rpackage.GetAsByteArray());
+            }
             Console.WriteLine("Sucess!");
+        }
+
+        static void Calculo(object[,] listaS, List<float> listaV, List<Rangos> listaR)
+        {
+            float[] medias = {};
+            for (int j = 0; j < listaR.Count; j++)
+            {
+                medias[j] = (listaR[j].getMinimo() + listaR[j].getMaximo())/2;
+            }
+            float gradom;
+            int i = 0;
+            foreach (float valor in listaV)
+            {
+                if (valor < listaR[0].getMinimo() || valor > listaR.Last().getMaximo())
+                {
+                    Console.WriteLine("ummmm");
+                }
+                else
+                {
+                    foreach (var rango in listaR)
+                    {
+                        if (valor <= rango.getMinimo())
+                        {
+                            gradom = 0;
+                        }
+                        else if (valor >= rango.getMinimo() && valor <= medias[i])
+                        {
+                            gradom = (valor - rango.getMinimo())/(medias[i]-rango.getMinimo());
+                        }
+                        else if (valor >= medias[i] && valor <= rango.getMaximo())
+                        {
+                            gradom = (rango.getMaximo() - valor)/(rango.getMaximo() - medias[i]);
+                        }
+                        else if (rango.getMaximo() >= valor)
+                        {
+                            gradom = 0;
+                        }
+                        i++;
+                    }
+
+                }
+            }
         }
     }
 }
