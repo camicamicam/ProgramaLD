@@ -57,7 +57,7 @@ namespace ProgramaLD
 
                 if (listaRangos.Count < 2 || listaRangos.Count > 4)
                 {
-                    
+
                     throw new Exception("Debes tener entre minimo 2 y maximo 4 rangos");
                 }
 
@@ -88,7 +88,7 @@ namespace ProgramaLD
         {
             for (int i = 0; i < listaRangos.Count - 1; i++)
             {
-                if (listaRangos[i].getMaximo() <= listaRangos[i+1].getMinimo())
+                if (listaRangos[i].getMaximo() <= listaRangos[i + 1].getMinimo())
                 {
                     //Console.WriteLine(listaRangos[i].getMaximo() + "y" + listaRangos[i+1].getMinimo());
                     return false;
@@ -103,21 +103,21 @@ namespace ProgramaLD
             using (ExcelPackage rpackage = new ExcelPackage())
             {
                 ExcelWorksheet hojar = rpackage.Workbook.Worksheets.Add("Resultados");
-                string[] encabezados = {"Valores", "Grado de verdad", "Rango"};
-                object[,] listaSalida = {};
+                string[] encabezados = { "Valores", "Grado de verdad", "Rango" };
+                List<object[]> salida = new List<object[]>();
 
                 for (int e = 0; e < encabezados.Length; e++)
                 {
-                    hojar.Cells[1,e+1].Value = encabezados[e];
+                    hojar.Cells[1, e + 1].Value = encabezados[e];
                 }
 
-                Calculo(listaSalida, listaValores, listaRangos);
 
+                Calculo(salida, listaValores, listaRangos);
                 for (int f = 0; f < listaValores.Count; f++)
                 {
                     for (int c = 0; c < encabezados.Length; c++)
                     {
-                        hojar.Cells[f + 2, c +1].Value = listaSalida[f,c];
+                        hojar.Cells[f + 2, c + 1].Value = salida[f][c];
                     }
                 }
                 hojar.Cells.AutoFitColumns();
@@ -126,46 +126,39 @@ namespace ProgramaLD
             Console.WriteLine("Sucess!");
         }
 
-        static void Calculo(object[,] listaS, List<float> listaV, List<Rangos> listaR)
+        static void Calculo(List<object[]> listaS, List<float> listaV, List<Rangos> listaR)
         {
-            float[] medias = {};
+            float[] medias = new float[listaR.Count];
             for (int j = 0; j < listaR.Count; j++)
             {
-                medias[j] = (listaR[j].getMinimo() + listaR[j].getMaximo())/2;
+                medias[j] = (listaR[j].getMinimo() + listaR[j].getMaximo()) / 2;
             }
-            float gradom;
-            int i = 0;
+
             foreach (float valor in listaV)
             {
-                if (valor < listaR[0].getMinimo() || valor > listaR.Last().getMaximo())
-                {
-                    Console.WriteLine("ummmm");
-                }
-                else
-                {
-                    foreach (var rango in listaR)
-                    {
-                        if (valor <= rango.getMinimo())
-                        {
-                            gradom = 0;
-                        }
-                        else if (valor >= rango.getMinimo() && valor <= medias[i])
-                        {
-                            gradom = (valor - rango.getMinimo())/(medias[i]-rango.getMinimo());
-                        }
-                        else if (valor >= medias[i] && valor <= rango.getMaximo())
-                        {
-                            gradom = (rango.getMaximo() - valor)/(rango.getMaximo() - medias[i]);
-                        }
-                        else if (rango.getMaximo() >= valor)
-                        {
-                            gradom = 0;
-                        }
-                        i++;
-                    }
+                float[] grados = new float[listaR.Count];
 
+                for (int i = 0; i < listaR.Count; i++)
+                {
+                    var rango = listaR[i];
+                    grados[i] = FuncionTrapezoidal(valor, rango.getMinimo(), medias[i], medias[i], rango.getMaximo());
                 }
+
+                float gradoMax = grados.Max();
+                int rangop = Array.IndexOf(grados, gradoMax);
+
+                string rangoe = listaR[rangop].getNombre();
+                listaS.Add(new object[] { valor, gradoMax, rangoe });
             }
         }
+        static float FuncionTrapezoidal(float x, float a, float b, float c, float d)
+        {
+            if (x <= a || x >= d) return 0;
+            if (x > a && x < b) return (x - a) / (b - a);
+            if (x >= b && x <= c) return 1;
+            if (x > c && x < d) return (d - x) / (d - c);
+            return 0;
+        }
+
     }
 }
