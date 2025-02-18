@@ -3,7 +3,7 @@
 //Funcionalidad: Programa que maneja lógica difusa, a través del acceso de un archivo de
 //excel, el usuario inserta los datos de los rangos que quiere usar junto con los valores
 //a evaluar, como resultado el programa da los grados de exactitud de cada uno y el rango 
-//seleccionado, también se imprimen las medias en la consola
+//seleccionado, también se incluyen las medias en el archivo
 
 using System;
 using System.Collections.Generic;
@@ -111,21 +111,25 @@ namespace ProgramaLD
             {
                 ExcelWorksheet hojar = rpackage.Workbook.Worksheets.Add("Resultados");
                 List<object[]> salida = new List<object[]>();
+                List<float> Medias = new List<float>();
 
-                hojar.Cells[1, 1].Value = "T";
+                Calculo(salida, listaValores, listaRangos, Medias);
+                hojar.Cells[1, 1].Value = "Medias";
+                hojar.Cells[2, 1].Value = "T";
                 for (int i = 0; i < listaRangos.Count; i++)
                 {
-                    hojar.Cells[1, i + 2].Value = listaRangos[i].getNombre();
+                    hojar.Cells[1, i + 2].Value = Medias[i];
+                    hojar.Cells[2, i + 2].Value = listaRangos[i].getNombre();
                 }
-                hojar.Cells[1, listaRangos.Count + 2].Value = "δ";
+                hojar.Cells[2, listaRangos.Count + 2].Value = "δ";
 
 
-                Calculo(salida, listaValores, listaRangos);
+
                 for (int f = 0; f < salida.Count; f++)
                 {
                     for (int c = 0; c < salida[f].Length; c++)
                     {
-                        hojar.Cells[f + 2, c + 1].Value = salida[f][c];
+                        hojar.Cells[f + 3, c + 1].Value = salida[f][c];
                     }
                 }
 
@@ -134,17 +138,14 @@ namespace ProgramaLD
                 salida.Clear();
             }
             Console.WriteLine("Exito! Su archivo con los resultados se encuentran en el archivo Resultado.xlsx");
-            
+
         }
 
-        static void Calculo(List<object[]> listaS, List<float> listaV, List<Rangos> listaR)
+        static void Calculo(List<object[]> listaS, List<float> listaV, List<Rangos> listaR, List<float> listaM)
         {
-            float[] medias = new float[listaR.Count];
-            Console.WriteLine("Medias");
             for (int j = 0; j < listaR.Count; j++)
             {
-                medias[j] = (listaR[j].getMinimo() + listaR[j].getMaximo()) / 2;
-                Console.WriteLine(medias[j]);
+                listaM.Add(((float)listaR[j].getMinimo() + (float)listaR[j].getMaximo()) / 2);
             }
 
             foreach (float valor in listaV)
@@ -155,47 +156,46 @@ namespace ProgramaLD
                 for (int i = 0; i < listaR.Count; i++)
                 {
                     var rango = listaR[i];
-                    if (valor < listaR[0].getMinimo() || valor > listaR.Last().getMaximo())
-                    {
-                        grados[i] = FuncionTrapezoidal(valor, rango.getMinimo(), medias[i], medias[i], rango.getMaximo());
-                        //Console.WriteLine(grados[i]);
-                    }
-                    else
-                    {
-                        grados[i] = FuncionTriangulo(valor, rango.getMinimo(), medias[i], rango.getMaximo());
-                        //Console.WriteLine(grados[i]);
-                    }
+                    // Determinamos si el rango es extremo:
+                    bool extremoIzquierdo = false;
+                    bool extremoDerecho = false;
+                    string nombre = rango.getNombre();
+                    if (nombre == listaR[0].getNombre())
+                        extremoIzquierdo = true;
+                    else if (nombre == listaR.Last().getNombre())
+                        extremoDerecho = true;
+
+                    grados[i] = CalcularMembresia(valor, rango.getMinimo(), rango.getMaximo(), extremoIzquierdo, extremoDerecho, listaM, i);
                 }
 
                 float gradoMax = grados.Max();
                 int rangop = Array.IndexOf(grados, gradoMax);
 
                 string rangoe = listaR[rangop].getNombre();
-                object [] fila = new object[listaR.Count+2];
+                object[] fila = new object[listaR.Count + 2];
                 fila[0] = valor;
                 for (int i = 0; i < listaR.Count; i++)
                 {
                     fila[i + 1] = grados[i];
                 }
-                fila[listaR.Count+1] = rangoe;
+                fila[listaR.Count + 1] = rangoe;
                 listaS.Add(fila);
             }
         }
-        static float FuncionTrapezoidal(float x, float a, float b, float c, float d)
+        static float CalcularMembresia(float x, float min, float max, bool extremoIzquierdo, bool extremoDerecho, List<float> medias, int i)
         {
-            if (x <= a || x >= d) return 0;
-            if (x > a && x < b) return (x - a) / (b - a);
-            if (x >= b && x <= c) return 1;
-            if (x > c && x < d) return (d - x) / (d - c);
-            return 0;
-        }
+            if (extremoIzquierdo && x <= min)
+                return 1;
+            if (extremoDerecho && x >= max)
+                return 1;
 
-        static float FuncionTriangulo(float x, float a, float b, float c)
-        {
-            if (x<a) return 0;
-            if (x >= a && x <= b) return (x - a) / (b - a);
-            if (x >= b && x <= c) return (c - x) / (c - b);
-            return 0;
+            if (x <= min || x >= max)
+                return 0;
+
+            if (x <= medias[i])
+                return (x - min) / (medias[i] - min);
+            else
+                return (max - x) / (max - medias[i]);
         }
 
     }
