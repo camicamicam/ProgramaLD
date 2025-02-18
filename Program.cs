@@ -1,4 +1,11 @@
-﻿using System;
+﻿//Camila Patricia Mata Gallegos
+//Cristian Ledesma Ortiz
+//Funcionalidad: Programa que maneja lógica difusa, a través del acceso de un archivo de
+//excel, el usuario inserta los datos de los rangos que quiere usar junto con los valores
+//a evaluar, como resultado el programa da los grados de exactitud de cada uno y el rango 
+//seleccionado, también se imprimen las medias en la consola
+
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -12,7 +19,7 @@ namespace ProgramaLD
 
         static void Main(string[] args)
         {
-            string Path = "DATOS 2025.xlsx";
+            string Path = "Entrada.xlsx";
             if (!File.Exists(Path))
             {
                 Console.WriteLine("El archivo no existe.");
@@ -103,52 +110,75 @@ namespace ProgramaLD
             using (ExcelPackage rpackage = new ExcelPackage())
             {
                 ExcelWorksheet hojar = rpackage.Workbook.Worksheets.Add("Resultados");
-                string[] encabezados = { "Valores", "Grado de verdad", "Rango" };
                 List<object[]> salida = new List<object[]>();
 
-                for (int e = 0; e < encabezados.Length; e++)
+                hojar.Cells[1, 1].Value = "T";
+                for (int i = 0; i < listaRangos.Count; i++)
                 {
-                    hojar.Cells[1, e + 1].Value = encabezados[e];
+                    hojar.Cells[1, i + 2].Value = listaRangos[i].getNombre();
                 }
+                hojar.Cells[1, listaRangos.Count + 2].Value = "δ";
 
 
                 Calculo(salida, listaValores, listaRangos);
-                for (int f = 0; f < listaValores.Count; f++)
+                for (int f = 0; f < salida.Count; f++)
                 {
-                    for (int c = 0; c < encabezados.Length; c++)
+                    for (int c = 0; c < salida[f].Length; c++)
                     {
                         hojar.Cells[f + 2, c + 1].Value = salida[f][c];
                     }
                 }
+
                 hojar.Cells.AutoFitColumns();
                 File.WriteAllBytes(Pathresultado, rpackage.GetAsByteArray());
+                salida.Clear();
             }
-            Console.WriteLine("Sucess!");
+            Console.WriteLine("Exito! Su archivo con los resultados se encuentran en el archivo Resultado.xlsx");
+            
         }
 
         static void Calculo(List<object[]> listaS, List<float> listaV, List<Rangos> listaR)
         {
             float[] medias = new float[listaR.Count];
+            Console.WriteLine("Medias");
             for (int j = 0; j < listaR.Count; j++)
             {
                 medias[j] = (listaR[j].getMinimo() + listaR[j].getMaximo()) / 2;
+                Console.WriteLine(medias[j]);
             }
 
             foreach (float valor in listaV)
             {
+                //Console.WriteLine(valor);
                 float[] grados = new float[listaR.Count];
 
                 for (int i = 0; i < listaR.Count; i++)
                 {
                     var rango = listaR[i];
-                    grados[i] = FuncionTrapezoidal(valor, rango.getMinimo(), medias[i], medias[i], rango.getMaximo());
+                    if (valor < listaR[0].getMinimo() || valor > listaR.Last().getMaximo())
+                    {
+                        grados[i] = FuncionTrapezoidal(valor, rango.getMinimo(), medias[i], medias[i], rango.getMaximo());
+                        //Console.WriteLine(grados[i]);
+                    }
+                    else
+                    {
+                        grados[i] = FuncionTriangulo(valor, rango.getMinimo(), medias[i], rango.getMaximo());
+                        //Console.WriteLine(grados[i]);
+                    }
                 }
 
                 float gradoMax = grados.Max();
                 int rangop = Array.IndexOf(grados, gradoMax);
 
                 string rangoe = listaR[rangop].getNombre();
-                listaS.Add(new object[] { valor, gradoMax, rangoe });
+                object [] fila = new object[listaR.Count+2];
+                fila[0] = valor;
+                for (int i = 0; i < listaR.Count; i++)
+                {
+                    fila[i + 1] = grados[i];
+                }
+                fila[listaR.Count+1] = rangoe;
+                listaS.Add(fila);
             }
         }
         static float FuncionTrapezoidal(float x, float a, float b, float c, float d)
@@ -157,6 +187,14 @@ namespace ProgramaLD
             if (x > a && x < b) return (x - a) / (b - a);
             if (x >= b && x <= c) return 1;
             if (x > c && x < d) return (d - x) / (d - c);
+            return 0;
+        }
+
+        static float FuncionTriangulo(float x, float a, float b, float c)
+        {
+            if (x<a) return 0;
+            if (x >= a && x <= b) return (x - a) / (b - a);
+            if (x >= b && x <= c) return (c - x) / (c - b);
             return 0;
         }
 
